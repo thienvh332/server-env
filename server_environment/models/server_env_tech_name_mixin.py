@@ -2,9 +2,11 @@
 # @author Simone Orsi <simahawk@gmail.com>
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
+import logging
+
 from odoo import api, fields, models
 
-from odoo.addons.http_routing.models.ir_http import slugify
+_logger = logging.getLogger(__name__)
 
 
 class ServerEnvTechNameMixin(models.AbstractModel):
@@ -35,43 +37,24 @@ class ServerEnvTechNameMixin(models.AbstractModel):
             "`tech_name` must be unique!",
         )
     ]
-    # TODO: could leverage the new option for computable / writable fields
-    # and get rid of some onchange / read / write code.
     tech_name = fields.Char(
-        help="Unique name for technical purposes. Eg: server env keys.",
+        compute="_compute_tech_name",
         copy=False,
+        readonly=False,
+        store=True,
+        help="Unique name for technical purposes. Eg: server env keys.",
     )
 
     _server_env_section_name_field = "tech_name"
 
-    @api.onchange("name")
-    def _onchange_name_for_tech(self):
-        # Keep this specific name for the method to avoid possible overrides
-        # of existing `_onchange_name` methods
-        if self.name and not self.tech_name:
-            self.tech_name = self.name
+    @api.depends("name")
+    def _compute_tech_name(self):
+        for record in self:
+            if record.name and not record.tech_name:
+                record.tech_name = self._normalize_tech_name(record.name)
+                _logger.warning(
+                    f"Tech name automatically generated from name: {record.tech_name}"
+                )
 
-    @api.onchange("tech_name")
-    def _onchange_tech_name(self):
-        if self.tech_name:
-            # make sure is normalized
-            self.tech_name = self._normalize_tech_name(self.tech_name)
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            self._handle_tech_name(vals)
-        return super().create(vals_list)
-
-    def write(self, vals):
-        self._handle_tech_name(vals)
-        return super().write(vals)
-
-    def _handle_tech_name(self, vals):
-        # make sure technical names are always there
-        if not vals.get("tech_name") and vals.get("name"):
-            vals["tech_name"] = self._normalize_tech_name(vals["name"])
-
-    @staticmethod
-    def _normalize_tech_name(name):
-        return slugify(name).replace("-", "_")
+    def _normalize_tech_name(self, name):
+        return self.env["ir.http"]._slugify(name).replace("-", "_")

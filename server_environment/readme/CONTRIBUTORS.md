@@ -10,3 +10,4 @@
 - Thomas Binfeld \<<thomas.binsfeld@acsone.eu>\>
 - Stéphane Bidoul \<<stefane.bidoul@acsone.com>\>
 - Simone Orsi \<<simahawk@gmail.com>\>
+- Thien Vo \<<thienvh@trobz.com>\>
